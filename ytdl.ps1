@@ -18,4 +18,4 @@ Function download([string]$url="",[bool]$isplaylist=$false) {
     & $script --download-archive $archiveDir --no-overwrites --ignore-errors -o "$outputDir$output" $url
 }
 
-download $link (($link -like "*/playlist?*") -or ($link -like "*&list=*") -or ($link -like "*/playlists"))
+download $link (($link -like "*/playlist?*") -or ($link -like "*&list=*") -or ($link -like "*/playlists")  -or ($link -like "*youtube.com/*/videos"))
