@@ -1,21 +1,31 @@
-$outputDir = "D:\video\"
+$ytdl = "youtube-dl.exe"
 $archiveDir = "D:\mpv\downloaded.txt"
 
-$outputTemplatePlaylist = "%(uploader)s/%(playlist)s/%(playlist_index)s - %(title)s.%(ext)s"
-$outputTemplate = "%(title)s.%(ext)s"
+$uploader = "%(uploader)s"
 
-$script = "youtube-dl.exe"
+$outputDir = "D:\video\"
+$outputTitle = "%(title)s.%(ext)s"
+$outputPlaylist = "%(playlist)s/%(playlist_index)s - "
+
+Function download([string]$url="",[bool]$isPlaylist=$false) {
+    $output = $outputTitle
+    
+    if ($isPlaylist -eq $true) {
+        $output = $outputPlaylist + $output
+    }
+    
+    if (($url -like "*youtube.com*") -or ($url -like "*youtu.be*")) {
+        $output = $uploader + "/" + $output
+    }
+
+    $output = $outputDir + $output
+
+    & $ytdl --download-archive $archiveDir --no-overwrites --ignore-errors -o $output $url
+}
 
 $link = $args[0]
 
-Function download([string]$url="",[bool]$isplaylist=$false) {
-    $output = $outputTemplate
-    
-    if ($isplaylist -eq $true) {
-        $output = $outputTemplatePlaylist
-    }
-
-    & $script --download-archive $archiveDir --no-overwrites --ignore-errors -o "$outputDir$output" $url
-}
-
-download $link (($link -like "*/playlist?*") -or ($link -like "*&list=*") -or ($link -like "*/playlists")  -or ($link -like "*youtube.com/*/videos"))
+download $link (($link -like "*/playlist?*") -or
+                ($link -like "*&list=*") -or
+                ($link -like "*/playlists") -or
+                ($link -like "*/videos"))
