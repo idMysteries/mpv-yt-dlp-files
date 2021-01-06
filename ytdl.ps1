@@ -25,7 +25,8 @@ Function download([string]$url="",[bool]$isPlaylist=$false) {
 
 $link = $args[0]
 
+$link = $link -replace "watch\?v=.*&list=", "playlist?list="
+
 download $link (($link -like "*/playlist?*") -or
-                ($link -like "*&list=*") -or
                 ($link -like "*/playlists") -or
                 ($link -like "*/videos"))
