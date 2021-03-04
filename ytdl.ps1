@@ -19,7 +19,7 @@ Function download([string]$url) {
     $output = $outputTitle
 
     $Joutput = cmd /c $ytdl --no-warnings -J $url --add-header "Referer: $url"
-    
+
     $data = ConvertFrom-Json20 $Joutput
     
     if ($data._type -eq "playlist") {
@@ -41,6 +41,8 @@ Function download([string]$url) {
     & $ytdl --no-warnings $archive --no-overwrites --ignore-errors -o $output $url --add-header "Referer: $url" 
 }
 
+
 $link = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
+$link = $link -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", ""
 
 download $link
