@@ -1,7 +1,7 @@
 $ytdl = "youtube-dl.exe"
 
 $archiveDir = "D:\mpv\downloaded.txt"
-$archive = "--download-archive $archiveDir"
+$archive = "--download-archive", "$archiveDir"
 
 $uploader = "%(uploader)s"
 
