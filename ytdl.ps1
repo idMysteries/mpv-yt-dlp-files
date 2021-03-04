@@ -1,5 +1,7 @@
 $ytdl = "youtube-dl.exe"
+
 $archiveDir = "D:\mpv\downloaded.txt"
+$archive = "--download-archive $archiveDir"
 
 $uploader = "%(uploader)s"
 
@@ -31,8 +33,12 @@ Function download([string]$url) {
     $output = $outputDir + $output
 
     #Write-Output $data
-
-    & $ytdl --no-warnings --download-archive $archiveDir --no-overwrites --ignore-errors -o $output $url --add-header "Referer: $url" 
+    
+    if ($data.id -eq "shell") {
+        $archive = ""
+    }
+    
+    & $ytdl --no-warnings $archive --no-overwrites --ignore-errors -o $output $url --add-header "Referer: $url" 
 }
 
 $link = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
