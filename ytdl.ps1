@@ -7,26 +7,34 @@ $outputDir = "D:\video\"
 $outputTitle = "%(title)s.%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
 
-Function download([string]$url="",[bool]$isPlaylist=$false) {
+function ConvertFrom-Json20([object] $item){ 
+    add-type -assembly system.web.extensions
+    $ps_js = new-object system.web.script.serialization.javascriptSerializer
+    return ,$ps_js.DeserializeObject($item)
+}
+
+Function download([string]$url) {
     $output = $outputTitle
+
+    $Joutput = cmd /c $ytdl --no-warnings -J $url --add-header "Referer: $url"
     
-    if ($isPlaylist -eq $true) {
+    $data = ConvertFrom-Json20 $Joutput
+    
+    if ($data._type -eq "playlist") {
         $output = $outputPlaylist + $output
     }
     
-    if (($url -like "*youtube.com*") -or ($url -like "*youtu.be*")) {
+    if ($data.uploader) {
         $output = $uploader + "/" + $output
     }
-
+    
     $output = $outputDir + $output
 
-    & $ytdl --download-archive $archiveDir --no-overwrites --ignore-errors -o $output $url --add-header "Referer: $url" 
+    #Write-Output $data
+
+    & $ytdl --no-warnings --download-archive $archiveDir --no-overwrites --ignore-errors -o $output $url --add-header "Referer: $url" 
 }
 
-$link = $args[0]
+$link = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
 
-$link = $link -replace "watch\?v=.*&list=", "playlist?list="
-
-download $link (($link -like "*/playlist?*") -or
-                ($link -like "*/playlists") -or
-                ($link -like "*/videos"))
+download $link
