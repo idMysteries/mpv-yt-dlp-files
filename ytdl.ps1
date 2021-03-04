@@ -20,7 +20,7 @@ Function download([string]$url="",[bool]$isPlaylist=$false) {
 
     $output = $outputDir + $output
 
-    & $ytdl --download-archive $archiveDir --no-overwrites --ignore-errors -o $output $url
+    & $ytdl --download-archive $archiveDir --no-overwrites --ignore-errors -o $output $url --add-header "Referer: $url" 
 }
 
 $link = $args[0]
