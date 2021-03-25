@@ -20,16 +20,23 @@ $url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", 
 $json = cmd /c $ytdl --no-warnings -J $url --add-header "Referer: $url"
 $data = ConvertFrom-Json20 $json
 
-if ($data._type -eq "playlist") {
-    $output = $outputPlaylist + $output
+#CRQueue is a queue on YouTube
+#WL - Watch Later
+if (($data.title -eq "CRQueue") -or ($data.id -eq "WL")) {
+    $output = "$uploader/%(playlist_index)s - "
 }
+else {
+    if ($data._type -eq "playlist") {
+        $output = $outputPlaylist + $output
+    }
 
-if ($data.uploader) {
-    $output = $uploader + "/" + $output
-}
+    if ($data.uploader) {
+        $output = $uploader + "/" + $output
+    }
 
-if ($data.id -eq "shell") {
-    $archive = ""
+    if ($data.id -eq "shell") {
+        $archive = ""
+    }
 }
 
 & $ytdl --no-warnings --no-overwrites --ignore-errors $archive -o "$directory$output" $url --add-header "Referer: $url" 
