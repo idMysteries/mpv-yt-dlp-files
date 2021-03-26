@@ -11,6 +11,7 @@ $archive = "--download-archive", "D:\mpv\downloaded.txt"
 function ConvertFrom-Json20([object] $item){ 
     add-type -assembly system.web.extensions
     $ps_js = new-object system.web.script.serialization.javascriptSerializer
+    $ps_js.MaxJsonLength = 104857600
     return ,$ps_js.DeserializeObject($item)
 }
 
