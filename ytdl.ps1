@@ -23,7 +23,7 @@ $data = ConvertFrom-Json20 $json
 
 #CRQueue is a queue on YouTube
 #WL - Watch Later
-if (($data.title -eq "CRQueue") -or ($data.id -eq "WL")) {
+if (($data.title -eq "Queue") -or ($data.id -eq "WL")) {
     $output = "$uploader/%(playlist_index)s - $output"
 }
 else {
