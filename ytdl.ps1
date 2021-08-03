@@ -40,4 +40,4 @@ else {
     }
 }
 
-& $ytdl --no-warnings --ignore-errors $archive -o "$directory$output" $url --add-header "Referer: $url" 
+& $ytdl --no-warnings --add-metadata --ignore-errors $archive -o "$directory$output" $url --add-header "Referer: $url" 
