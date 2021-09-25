@@ -1,43 +1,33 @@
-$ytdl = "youtube-dl.exe"
+$ytdl = "yt-dlp.exe"
 $directory = "D:\video\"
 
 $uploader = "%(uploader)s"
-
+$archive = ""
 $output = "%(title)s.%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
-
-$archive = "--download-archive", "D:\mpv\downloaded.txt"
-
-function ConvertFrom-Json20([object] $item){ 
-    add-type -assembly system.web.extensions
-    $ps_js = new-object system.web.script.serialization.javascriptSerializer
-    $ps_js.MaxJsonLength = 104857600
-    return ,$ps_js.DeserializeObject($item)
-}
 
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
 $url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", ""
 
-$json = cmd /c $ytdl --no-warnings -J $url --add-header "Referer: $url"
-$data = ConvertFrom-Json20 $json
+$pltitle = cmd /c $ytdl --print playlist_title --no-mark-watched --playlist-end 1 $url
+$vuploader = cmd /c $ytdl --print uploader --no-mark-watched --playlist-end 1 $url
+$vid = cmd /c $ytdl --print id --no-mark-watched --playlist-end 1 $url
 
-#CRQueue is a queue on YouTube
-#WL - Watch Later
-if (($data.title -eq "Queue") -or ($data.id -eq "WL")) {
+if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later")) {
     $output = "$uploader/%(playlist_index)s - $output"
 }
 else {
-    if ($data._type -eq "playlist") {
+    if ($pltitle -ne "NA") {
         $output = $outputPlaylist + $output
     }
 
-    if ($data.uploader) {
+    if ($vuploader -ne "NA") {
         $output = $uploader + "/" + $output
     }
 
-    if ($data.id -eq "shell") {
-        $archive = ""
+    if ($vid -eq "shell") {
+        $archive = "--no-download-archive"
     }
 }
 
-& $ytdl --no-warnings --add-metadata --ignore-errors $archive -o "$directory$output" $url --add-header "Referer: $url" 
+& $ytdl $archive -o "$directory$output" $url
