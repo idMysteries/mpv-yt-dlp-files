@@ -9,9 +9,9 @@ $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
 $url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", ""
 
-$pltitle = cmd /c $ytdl --print playlist_title --no-download-archive --no-mark-watched --playlist-end 1 $url
-$vuploader = cmd /c $ytdl --print uploader --no-download-archive --no-mark-watched --playlist-end 1 $url
-$vid = cmd /c $ytdl --print id --no-download-archive --no-mark-watched --playlist-end 1 $url
+$meta = cmd /c $ytdl --print "%(playlist_title)s <<>> %(uploader)s <<>> %(id)s" --no-download-archive --no-mark-watched --playlist-end 1 $url
+
+$pltitle, $vuploader, $vid = $meta -Split " <<>> "
 
 if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later")) {
     $output = "$uploader/%(playlist_index)s - $output"
