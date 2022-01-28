@@ -17,7 +17,7 @@ if ($url -match "twitch.tv/.*/clips") {
 }
 
 if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later")) {
-    $output = "$uploader/%(playlist_index)s - $output"
+    $output = "$vuploader/%(playlist_index)s - $output"
 }
 else {
     if ($pltitle -ne "NA") {
