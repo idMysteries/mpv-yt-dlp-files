@@ -1,6 +1,7 @@
 $ytdl = "yt-dlp.exe"
 $directory = "D:\video\"
 
+$uploader = "%(uploader)s"
 $archive = ""
 $output = "%(title)s.%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
@@ -14,10 +15,11 @@ $plid, $pltitle, $vuploader, $vid = $meta -Split " <<>> "
 
 if ($url -match "twitch.tv/.*/clips") {
     $vuploader = $plid
+    $uploader = $vuploader
 }
 
 if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later")) {
-    $output = "$vuploader/%(playlist_index)s - $output"
+    $output = "$uploader/%(playlist_index)s - $output"
 }
 else {
     if ($pltitle -ne "NA") {
@@ -25,7 +27,7 @@ else {
     }
 
     if ($vuploader -ne "NA") {
-        $output = $vuploader + "/" + $output
+        $output = $uploader + "/" + $output
     }
 
     if ($vid -eq "shell") {
@@ -33,4 +35,4 @@ else {
     }
 }
 
-& $ytdl $archive -o "$directory$output" $url
+& $ytdl $archive --concurrent-fragments 4 --live-from-start -o "$directory$output" $url
