@@ -14,8 +14,7 @@ $meta = cmd /c $ytdl --print "%(playlist_id)s <<>> %(playlist_title)s <<>> %(upl
 $plid, $pltitle, $vuploader, $vid = $meta -Split " <<>> "
 
 if ($url -match "twitch.tv/.*/clips") {
-    $vuploader = $plid
-    $uploader = $vuploader
+    $uploader = $plid
 }
 
 if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later")) {
