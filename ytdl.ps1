@@ -6,6 +6,8 @@ $archive = ""
 $output = "%(title)s.%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
 
+& $ytdl --update
+
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
 $url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", ""
 
@@ -34,4 +36,4 @@ else {
     }
 }
 
-& $ytdl $archive --concurrent-fragments 4 --live-from-start -o "$directory$output" $url
+& $ytdl $archive --concurrent-fragments 2 --live-from-start -o "$directory$output" $url
