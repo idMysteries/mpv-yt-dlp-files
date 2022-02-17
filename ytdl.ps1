@@ -19,7 +19,7 @@ if ($url -match "twitch.tv/.*/clips") {
     $uploader = $plid
 }
 
-if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later")) {
+if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later") -or ($plid -eq "WL")) {
     $output = "$uploader/%(playlist_index)s - $output"
 }
 else {
