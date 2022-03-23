@@ -2,7 +2,8 @@ $ytdl = "yt-dlp.exe"
 $directory = "D:\video\"
 
 $uploader = "%(uploader)s"
-$archive = ""
+$archive = "--download-archive", "D:\mpv\downloaded.txt"
+$metatitle = "--parse-metadata", "title:%(meta_title)s"
 $output = "%(title)s.%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
 
@@ -36,4 +37,4 @@ else {
     }
 }
 
-& $ytdl $archive --concurrent-fragments 2 --live-from-start -o "$directory$output" $url
+& $ytdl $archive $metatitle --concurrent-fragments 2 --live-from-start -o "$directory$output" $url
