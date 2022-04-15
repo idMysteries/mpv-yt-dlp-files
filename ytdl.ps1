@@ -1,5 +1,6 @@
-$ytdl = "yt-dlp.exe"
+$ytdl = "D:\mpv\yt-dlp.exe"
 $directory = "D:\video\"
+$datedir = Get-Date -Format "\\yyy.MM.dd\\"
 
 $uploader = "%(uploader)s"
 $archive = "--download-archive", "D:\mpv\downloaded.txt"
@@ -27,7 +28,7 @@ else {
     if ($pltitle -ne "NA") {
         $output = $outputPlaylist + $output
     }
-
+    
     if ($vuploader -ne "NA") {
         $output = $uploader + "/" + $output
     }
@@ -37,4 +38,4 @@ else {
     }
 }
 
-& $ytdl $archive $metatitle --concurrent-fragments 2 --live-from-start -o "$directory$output" $url
+& $ytdl $archive $metatitle --concurrent-fragments 2 --live-from-start -o "$directory$datedir$output" $url
