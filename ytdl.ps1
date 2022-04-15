@@ -1,6 +1,6 @@
 $ytdl = "D:\mpv\yt-dlp.exe"
 $directory = "D:\video\"
-$datedir = Get-Date -Format "\\yyy.MM.dd\\"
+$datedir = Get-Date -Format "\\dd.MM.yyyy\\"
 
 $uploader = "%(uploader)s"
 $archive = "--download-archive", "D:\mpv\downloaded.txt"
