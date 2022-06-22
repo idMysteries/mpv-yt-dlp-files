@@ -1,4 +1,4 @@
-# ytdl
+# My yt-dlp powershell script
 
 Run: ytdl \<url\> \<args\>
 
