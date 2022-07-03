@@ -15,7 +15,7 @@ $url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", 
 
 $null, $args = $args
 
-$meta = cmd /c $ytdl --print "%(playlist_id)s <<>> %(playlist_title)s <<>> %(uploader)s <<>> %(id)s <<>> %(extractor)s" --no-download-archive --no-mark-watched --playlist-end 1 $url
+$meta = cmd /c $ytdl --print "%(playlist_id)s <<>> %(playlist_title)s <<>> %(uploader)s <<>> %(id)s <<>> %(extractor)s" --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
 
 $plid, $pltitle, $vuploader, $vid, $extractor = $meta -Split " <<>> "
 
