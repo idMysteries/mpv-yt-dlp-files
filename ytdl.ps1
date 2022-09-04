@@ -5,7 +5,7 @@ $datedir = Get-Date -Format "\\dd.MM.yyyy\\"
 $uploader = "%(uploader)s"
 $archive = "--download-archive", "D:\mpv\downloaded.txt"
 $metatitle = "--parse-metadata", "title:%(meta_title)s"
-$output = "%(title).200B [%(id)s].%(ext)s"
+$output = "%(title).160B [%(id)s].%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
 
 & $ytdl --update
