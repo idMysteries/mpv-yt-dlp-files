@@ -1,4 +1,4 @@
-# My yt-dlp powershell script
+# My yt-dlp powershell script & mpv config for SSD disk
 
 Run: ytdl \<url\> \<args\>
 
