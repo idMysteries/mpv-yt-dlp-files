@@ -34,12 +34,15 @@ if ($extractor -eq "generic") {
     $params.Archive = "--no-download-archive"
 }
 
-$liveFromStart = if ($extractor -like "*youtube*") { "--live-from-start" } else { "" }
+$commandArgs = @(
+    $params.Archive
+    $params.MetaTitle
+    "--concurrent-fragments", "4"
+    if ($extractor -like "*youtube*") { "--live-from-start" }
+    if ($url -match "index=(\d+)") { "-I $($matches[1]):" }
+    $args
+    "-o", "$directory$output"
+    $url
+) | Where-Object { $_ }
 
-$indexParam = ""
-if ($url -match "index=(\d+)") {
-    $index = $matches[1]
-    $indexParam = "-I ${index}:"
-}
-
-& $ytdl $params.Archive $params.MetaTitle --concurrent-fragments 4 $liveFromStart $indexParam $args -o "$directory$output" $url
+& $ytdl $commandArgs
