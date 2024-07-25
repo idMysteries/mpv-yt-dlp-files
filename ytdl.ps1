@@ -3,7 +3,7 @@ $directory = "F:\video\"
 $datedir = Get-Date -Format "\\dd.MM.yyyy\\"
 
 $uploader = "%(uploader)s"
-$archive = "--download-archive", "F:\mpv\downloaded.txt"
+$archive = "--download-archive", "%APPDATA%\mpv\archive.txt"
 $metatitle = "--parse-metadata", "title:%(meta_title)s"
 $output = "%(title).160B [%(id)s].%(ext)s"
 $outputPlaylist = "%(playlist)s/%(playlist_index)s - "
@@ -15,9 +15,9 @@ $url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", 
 
 $null, $args = $args
 
-$meta = cmd /c $ytdl --print "%(playlist_id)s <<>> %(playlist_title)s <<>> %(uploader)s <<>> %(id)s <<>> %(extractor)s" --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
+$meta = & $ytdl --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
 
-$plid, $pltitle, $vuploader, $vid, $extractor = $meta -Split " <<>> "
+$plid, $pltitle, $vuploader, $vid, $extractor = $meta -Split "\n"
 
 if ($url -match "twitch.tv/.*/clips") {
     $uploader = $plid
@@ -30,9 +30,11 @@ else {
     if ($pltitle -ne "NA") {
         $output = $outputPlaylist + $output
     }
-    
+
+    $output = $datedir + $output
+     
     if ($vuploader -ne "NA") {
-        $output = $uploader + "/" + $output
+        $output = $uploader + $output
     }
 
     if ($extractor -eq "generic") {
@@ -40,4 +42,4 @@ else {
     }
 }
 
-& $ytdl $archive $metatitle $args --concurrent-fragments 2 --live-from-start -o "$directory$datedir$output" $url
+& $ytdl $archive $metatitle --concurrent-fragments 2 --live-from-start $args -o "$directory$output" $url
