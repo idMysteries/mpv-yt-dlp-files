@@ -1,45 +1,45 @@
-$ytdl = "yt-dlp.exe"
-$directory = "F:\video\"
-$datedir = Get-Date -Format "\\dd.MM.yyyy\\"
+$ytdl = "yt-dlp"
+$directory = "F:/video/"
+$datedir = Get-Date -Format "/dd.MM.yyyy/"
 
-$uploader = "%(uploader)s"
-$archive = "--download-archive", "%APPDATA%\mpv\archive.txt"
-$metatitle = "--parse-metadata", "title:%(meta_title)s"
-$output = "%(title).160B [%(id)s].%(ext)s"
-$outputPlaylist = "%(playlist)s/%(playlist_index)s - "
+$params = @{
+    Uploader = "%(uploader)s"
+    Archive = @("--download-archive", "%APPDATA%\mpv\archive.txt")
+    MetaTitle = @("--parse-metadata", "title:%(meta_title)s")
+    Output = "%(title).160B [%(id)s].%(ext)s"
+    OutputPlaylist = "/%(playlist)s/%(playlist_index)s - "
+}
 
 & $ytdl --update
 
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
-$url = $url -replace "\?utm_source=player&utm_medium=video&utm_campaign=EMBED", ""
 
 $null, $args = $args
 
 $meta = & $ytdl --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
-
 $plid, $pltitle, $vuploader, $vid, $extractor = $meta -Split "\n"
 
 if ($url -match "twitch.tv/.*/clips") {
-    $uploader = $plid
+    $params.Uploader = $plid
 }
 
-if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later") -or ($plid -eq "WL")) {
-    $output = "$uploader/%(playlist_index)s - $output"
-}
-else {
-    if ($pltitle -ne "NA") {
-        $output = $outputPlaylist + $output
-    }
-
-    $output = $datedir + $output
-     
-    if ($vuploader -ne "NA") {
-        $output = $uploader + $output
-    }
-
-    if ($extractor -eq "generic") {
-        $archive = "--no-download-archive"
-    }
+$output = if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later") -or ($plid -eq "WL")) {
+    "$($params.Uploader)/%(playlist_index)s - $($params.Output)"
+} else {
+    $base = if ($pltitle -ne "NA") { $params.OutputPlaylist + $params.Output } else { $datedir + $params.Output }
+    if ($vuploader -ne "NA") { $params.Uploader + $base } else { $base }
 }
 
-& $ytdl $archive $metatitle --concurrent-fragments 2 --live-from-start $args -o "$directory$output" $url
+if ($extractor -eq "generic") {
+    $params.Archive = "--no-download-archive"
+}
+
+$liveFromStart = if ($extractor -like "*youtube*") { "--live-from-start" } else { "" }
+
+$indexParam = ""
+if ($url -match "index=(\d+)") {
+    $index = $matches[1]
+    $indexParam = "-I ${index}:"
+}
+
+& $ytdl $params.Archive $params.MetaTitle --concurrent-fragments 4 $liveFromStart $indexParam $args -o "$directory$output" $url
