@@ -4,15 +4,15 @@ if (-not $args) {
 }
 
 $ytdlp = "yt-dlp"
-$downloadDirectory = "F:/video/"
-$dateDirectory = Get-Date -Format "/yyyy-MM-dd/"
+$downloadDirectory = "F:\video\"
+$dateDirectory = Get-Date -Format "\\yyyy-MM-dd\\"
 
 $params = @{
     Uploader = "%(uploader)s"
     Archive = @("--download-archive", "$env:LOCALAPPDATA\mpv\archive.txt")
     MetaTitle = @("--parse-metadata", "title:%(meta_title)s")
     OutputFormat = "%(title).150s [%(id)s].%(ext)s"
-    OutputPlaylistFormat = "/%(playlist)s/%(playlist_index)s - "
+    OutputPlaylistFormat = "\%(playlist)s\%(playlist_index)s - "
 }
 
 & $ytdlp --update
