@@ -11,7 +11,7 @@ $params = @{
     Uploader = "%(uploader)s"
     Archive = @("--download-archive", "$env:LOCALAPPDATA\mpv\archive.txt")
     MetaTitle = @("--parse-metadata", "title:%(meta_title)s")
-    OutputFormat = "%(title).160B [%(id)s].%(ext)s"
+    OutputFormat = "%(title).150s [%(id)s].%(ext)s"
     OutputPlaylistFormat = "/%(playlist)s/%(playlist_index)s - "
 }
 
@@ -54,6 +54,9 @@ $commandArguments = @(
     $url
 ) | Where-Object { $_ }
 
-Write-Host "yt-dlp arguments: $($commandArguments -join ' ')"
+$formattedArgs = $commandArguments | ForEach-Object { 
+    if ($_ -match '^-' -or $_ -eq $commandArguments[-1]) { "`n  $_" } else { $_ }
+}
+Write-Host "yt-dlp arguments:$formattedArgs"
 
 & $ytdlp $commandArguments
