@@ -55,8 +55,3 @@ $commandArguments = @(
 ) | Where-Object { $_ }
 
 & $ytdlp $commandArguments
-
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Error downloading video."
-    exit 1
-}
