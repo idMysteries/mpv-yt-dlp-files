@@ -1,48 +1,62 @@
-$ytdl = "yt-dlp"
-$directory = "F:/video/"
-$datedir = Get-Date -Format "/dd.MM.yyyy/"
+if (-not $args) {
+    Write-Error "URL not specified."
+    exit 1
+}
+
+$ytdlp = "yt-dlp"
+$downloadDirectory = "F:/video/"
+$dateDirectory = Get-Date -Format "/yyyy-MM-dd/"
 
 $params = @{
     Uploader = "%(uploader)s"
-    Archive = @("--download-archive", "%APPDATA%\mpv\archive.txt")
+    Archive = @("--download-archive", "$env:LOCALAPPDATA\mpv\archive.txt")
     MetaTitle = @("--parse-metadata", "title:%(meta_title)s")
-    Output = "%(title).160B [%(id)s].%(ext)s"
-    OutputPlaylist = "/%(playlist)s/%(playlist_index)s - "
+    OutputFormat = "%(title).160B [%(id)s].%(ext)s"
+    OutputPlaylistFormat = "/%(playlist)s/%(playlist_index)s - "
 }
 
-& $ytdl --update
+& $ytdlp --update
 
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
-
 $null, $args = $args
 
-$meta = & $ytdl --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
-$plid, $pltitle, $vuploader, $vid, $extractor = $meta -Split "\n"
+$metadata = & $ytdlp --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Error retrieving playlist metadata."
+    exit 1
+}
+
+$playlistId, $playlistTitle, $videoUploader, $videoId, $videoExtractor = $metadata -Split "`n"
 
 if ($url -match "twitch.tv/.*/clips") {
-    $params.Uploader = $plid
+    $params.Uploader = $playlistId
 }
 
-$output = if (($pltitle -eq "Queue") -or ($pltitle -eq "Watch later") -or ($plid -eq "WL")) {
-    "$($params.Uploader)/%(playlist_index)s - $($params.Output)"
+$outputPath = if (($playlistTitle -eq "Queue") -or ($playlistTitle -eq "Watch later") -or ($playlistId -eq "WL")) {
+    "$($params.Uploader)/%(playlist_index)s - $($params.OutputFormat)"
 } else {
-    $base = if ($pltitle -ne "NA") { $params.OutputPlaylist + $params.Output } else { $datedir + $params.Output }
-    if ($vuploader -ne "NA") { $params.Uploader + $base } else { $base }
+    $base = if ($playlistTitle -ne "NA") { $params.OutputPlaylistFormat + $params.OutputFormat } else { $dateDirectory + $params.OutputFormat }
+    if ($videoUploader -ne "NA") { $params.Uploader + $base } else { $base }
 }
 
-if ($extractor -eq "generic") {
+if ($videoExtractor -eq "generic") {
     $params.Archive = "--no-download-archive"
 }
 
-$commandArgs = @(
+$commandArguments = @(
     $params.Archive
     $params.MetaTitle
     "--concurrent-fragments", "4"
-    if ($extractor -like "*youtube*") { "--live-from-start" }
+    if ($videoExtractor -like "*youtube*") { "--live-from-start" }
     if ($url -match "index=(\d+)") { "-I $($matches[1]):" }
     $args
-    "-o", "$directory$output"
+    "-o", "$downloadDirectory$outputPath"
     $url
 ) | Where-Object { $_ }
 
-& $ytdl $commandArgs
+& $ytdlp $commandArguments
+
+if ($LASTEXITCODE -ne 0) {
+    Write-Error "Error downloading video."
+    exit 1
+}
