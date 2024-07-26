@@ -48,10 +48,12 @@ $commandArguments = @(
     $params.MetaTitle
     "--concurrent-fragments", "4"
     if ($videoExtractor -like "*youtube*") { "--live-from-start" }
-    if ($url -match "index=(\d+)") { "-I $($matches[1]):" }
+    if ($url -match "index=(\d+)") { "-I", "$($matches[1]):" }
     $args
     "-o", "$downloadDirectory$outputPath"
     $url
 ) | Where-Object { $_ }
+
+Write-Host "yt-dlp arguments: $($commandArguments -join ' ')"
 
 & $ytdlp $commandArguments
