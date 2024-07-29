@@ -3,19 +3,24 @@ if (-not $args) {
     exit 1
 }
 
+$drive = "F"
+
+if ($args[0] -match '^[A-Z]$') {
+    $drive = $args[0]
+    $null, $args = $args
+
+    if (-not $args) {
+        Write-Error "URL not specified."
+        exit 1
+    }
+}
+
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
 $null, $args = $args
 
-$disk = "F"
-
-if ($args.Length -gt 0 -and $args[0] -match '^[A-Z]$') {
-    $disk = $args[0]
-    $null, $args = $args
-}
-
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$downloadDirectory = "${disk}:\Videos\"
+$downloadDirectory = "${drive}:\Videos\"
 
 if (-not (Test-Path $downloadDirectory)) {
     New-Item -ItemType Directory -Path $downloadDirectory -Force
@@ -38,7 +43,6 @@ $metadata = & $ytdlp --print playlist_id,playlist_title,uploader,id,extractor --
 Write-Host "yt-dlp metadata:$metadata"
 
 $playlistId, $playlistTitle, $videoUploader, $videoId, $videoExtractor = $metadata -Split "`n"
-
 
 if ($url -match "twitch.tv/.*/clips") {
     $params.Uploader = $playlistId
