@@ -1,10 +1,27 @@
 if (-not $args) {
-    Write-Error "URL not specified."
+    Write-Error "Arguments not specified."
     exit 1
 }
 
+$url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
+$null, $args = $args
+
+$disk = "F"
+
+if ($args.Length -gt 0 -and $args[0] -match '^[A-Z]$') {
+    $disk = $args[0]
+    $null, $args = $args
+}
+
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+$downloadDirectory = "${disk}:\Videos\"
+
+if (-not (Test-Path $downloadDirectory)) {
+    New-Item -ItemType Directory -Path $downloadDirectory -Force
+}
+
 $ytdlp = "yt-dlp"
-$downloadDirectory = "F:\video\"
 $dateDirectory = Get-Date -Format "\\yyyy-MM-dd\\"
 
 $params = @{
@@ -17,22 +34,17 @@ $params = @{
 
 & $ytdlp --update
 
-$url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
-$null, $args = $args
-
 $metadata = & $ytdlp --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
-if ($LASTEXITCODE -ne 0) {
-    Write-Error "Error retrieving playlist metadata."
-    exit 1
-}
+Write-Host "yt-dlp metadata:$metadata"
 
 $playlistId, $playlistTitle, $videoUploader, $videoId, $videoExtractor = $metadata -Split "`n"
+
 
 if ($url -match "twitch.tv/.*/clips") {
     $params.Uploader = $playlistId
 }
 
-$outputPath = if (($playlistTitle -eq "Queue") -or ($playlistTitle -eq "Watch later") -or ($playlistId -eq "WL")) {
+$outputPath = if (($playlistTitle -eq "Queue") -or ($playlistTitle -eq "Очередь") -or ($playlistTitle -eq "Watch later") -or ($playlistId -eq "WL")) {
     "$($params.Uploader)/%(playlist_index)s - $($params.OutputFormat)"
 } else {
     $base = if ($playlistTitle -ne "NA") { $params.OutputPlaylistFormat + $params.OutputFormat } else { $dateDirectory + $params.OutputFormat }
