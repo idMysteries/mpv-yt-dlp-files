@@ -1,8 +1,11 @@
-mp.observe_property("window-minimized", "bool", function(_, value)
-    local pause = mp.get_property_native("pause")
-    if value == true then
+local function on_window_minimized(_, value)
+    if value then
         mp.set_property_native("pause", true)
-    elseif value == false then
-        mp.add_timeout(0.3, function() mp.set_property_native("pause", false) end)
+    else
+        mp.add_timeout(0.3, function()
+            mp.set_property_native("pause", false)
+        end)
     end
-end)
+end
+
+mp.observe_property("window-minimized", "bool", on_window_minimized)
