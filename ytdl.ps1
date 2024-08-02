@@ -7,7 +7,7 @@ $drive = "F"
 
 if ($args[0] -match '^[A-Z]$') {
     $drive = $args[0]
-    $null, $args = $args
+    $args = $args[1..$args.Length]
 
     if (-not $args) {
         Write-Error "URL not specified."
@@ -16,14 +16,14 @@ if ($args[0] -match '^[A-Z]$') {
 }
 
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
-$null, $args = $args
+$args = $args[1..$args.Length]
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 if ($drive -eq "C") {
-    $downloadDirectory = [Environment]::GetFolderPath("MyVideos") + "\"
+    $downloadDirectory = [Environment]::GetFolderPath("MyVideos")
 } else {
-    $downloadDirectory = "${drive}:\Videos\"
+    $downloadDirectory = "${drive}:\Videos"
 }
 
 if (-not (Test-Path $downloadDirectory)) {
@@ -70,7 +70,7 @@ $commandArguments = @(
     if ($videoExtractor -like "*youtube*") { "--live-from-start" }
     if ($url -match "index=(\d+)") { "-I", "$($matches[1]):" }
     $args
-    "-o", "$downloadDirectory$outputPath"
+    "-o", "$downloadDirectory\$outputPath"
     $url
 ) | Where-Object { $_ }
 
