@@ -20,7 +20,11 @@ $null, $args = $args
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$downloadDirectory = "${drive}:\Videos\"
+if ($drive -eq "C") {
+    $downloadDirectory = [Environment]::GetFolderPath("MyVideos") + "\"
+} else {
+    $downloadDirectory = "${drive}:\Videos\"
+}
 
 if (-not (Test-Path $downloadDirectory)) {
     New-Item -ItemType Directory -Path $downloadDirectory -Force
