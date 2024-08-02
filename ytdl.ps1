@@ -7,7 +7,7 @@ $drive = "F"
 
 if ($args[0] -match '^[A-Z]$') {
     $drive = $args[0]
-    $args = $args[1..$args.Length]
+    $args = $args[1..$args.Count]
 
     if (-not $args) {
         Write-Error "URL not specified."
@@ -16,7 +16,7 @@ if ($args[0] -match '^[A-Z]$') {
 }
 
 $url = $args[0] -replace "watch\?v=.*&list=", "playlist?list="
-$args = $args[1..$args.Length]
+$args = $args[1..$args.Count]
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
