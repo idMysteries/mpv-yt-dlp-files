@@ -12,19 +12,21 @@
 
 local original_hysteresis = mp.get_property_number("demuxer-hysteresis-secs")
 
-local function on_pause_change(_, value)
-    if value then
-        mp.set_property("demuxer-hysteresis-secs", 0)
-        local time_pos = mp.get_property("time-pos")
-        if time_pos then
-            -- Force a seek operation to trigger immediate cache filling
-            mp.add_timeout(0.05, function()
-                mp.commandv("seek", time_pos, "absolute", "exact")
-            end)
+if original_hysteresis ~= 0 then
+    local function on_pause_change(_, value)
+        if value then
+            mp.set_property("demuxer-hysteresis-secs", 0)
+            local time_pos = mp.get_property("time-pos")
+            if time_pos then
+                -- Force a seek operation to trigger immediate cache filling
+                mp.add_timeout(0.05, function()
+                    mp.commandv("seek", time_pos, "absolute", "exact")
+                end)
+            end
+        else
+            mp.set_property_number("demuxer-hysteresis-secs", original_hysteresis)
         end
-    else
-        mp.set_property_number("demuxer-hysteresis-secs", original_hysteresis)
     end
-end
 
-mp.observe_property("pause", "bool", on_pause_change)
+    mp.observe_property("pause", "bool", on_pause_change)
+end
