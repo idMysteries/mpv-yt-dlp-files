@@ -24,7 +24,7 @@ local function on_pause_change(_, value)
         mp.set_property("demuxer-hysteresis-secs", 0)
         local time_pos = mp.get_property("time-pos")
         if time_pos then
-            mp.add_timeout(0.1, function()
+            mp.add_timeout(0.05, function()
                 mp.commandv("seek", time_pos, "absolute", "exact")
             end)
         end
