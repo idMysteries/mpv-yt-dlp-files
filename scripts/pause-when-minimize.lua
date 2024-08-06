@@ -1,4 +1,4 @@
-ocal was_minimized = false
+local was_minimized = false
 
 local function on_window_minimized(_, value)
     if value then
