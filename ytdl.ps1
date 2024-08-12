@@ -37,8 +37,8 @@ $params = @{
     Uploader = "%(uploader)s"
     Archive = @("--download-archive", "$env:LOCALAPPDATA\mpv\archive.txt")
     MetaTitle = @("--parse-metadata", "title:%(meta_title)s")
-    OutputFormat = "%(title).150s [%(id)s].%(ext)s"
-    OutputPlaylistFormat = "\%(playlist)s\%(playlist_index)s - "
+    OutputFormat = "%(upload_date>%Y-%m-%d)s - %(title).150s [%(id)s].%(ext)s"
+    OutputPlaylistFormat = "\%(playlist)s\"
 }
 
 & $ytdlp --update
@@ -53,7 +53,7 @@ if ($url -match "twitch.tv/.*/clips") {
 }
 
 $outputPath = if (($playlistTitle -eq "Queue") -or ($playlistTitle -eq "Очередь") -or ($playlistTitle -eq "Watch later") -or ($playlistId -eq "WL")) {
-    "$($params.Uploader)/%(playlist_index)s - $($params.OutputFormat)"
+    "$($params.Uploader)/$($params.OutputFormat)"
 } else {
     $base = if ($playlistTitle -ne "NA") { $params.OutputPlaylistFormat + $params.OutputFormat } else { $dateDirectory + $params.OutputFormat }
     if ($videoUploader -ne "NA") { $params.Uploader + $base } else { $base }
