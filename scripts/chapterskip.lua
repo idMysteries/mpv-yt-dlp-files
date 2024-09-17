@@ -58,11 +58,6 @@ end
 
 local skipped = {}
 
-local function toggle_chapterskip()
-    options.enabled = not options.enabled
-    msg.info("Chapter skip " .. (options.enabled and "enabled" or "disabled"))
-end
-
 local function chapterskip(_, current)
     if not options.enabled then return end
 
@@ -85,16 +80,9 @@ local function chapterskip(_, current)
     end
 
     if skip then
-        local playlist_count = mp.get_property_number("playlist-count", 0)
-        local playlist_pos = mp.get_property_number("playlist-pos-1", 0)
-        if playlist_pos >= playlist_count - 1 then
-            mp.set_property("time-pos", mp.get_property("duration"))
-        else
-            mp.commandv("playlist-next")
-        end
+        mp.set_property("time-pos", mp.get_property("duration"))
     end
 end
 
 mp.observe_property("chapter", "number", chapterskip)
 mp.register_event("file-loaded", function() skipped = {} end)
-mp.register_script_message("chapter-skip", toggle_chapterskip)
