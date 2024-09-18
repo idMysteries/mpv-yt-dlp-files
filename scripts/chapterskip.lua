@@ -58,28 +58,31 @@ end
 
 local skipped = {}
 
-local function chapterskip(_, current)
+local function chapterskip(_, current_chapter_index)
     if not options.enabled then return end
+    if not current_chapter_index then current_chapter_index = 0 end
 
     local chapters = mp.get_property_native("chapter-list") or {}
-    local skip = nil
+    local skip_index = nil
 
-    for i, chapter in ipairs(chapters) do
+    for i = current_chapter_index + 1, #chapters do
+        local chapter = chapters[i]
+
         if (not options.skip_once or not skipped[i]) and matches(chapter.title) then
-            if i == current + 1 or (skip and i == skip + 1) then
-                if skip then
-                    skipped[skip] = true
+            if i == current_chapter_index + 1 or (skip_index and i == skip_index + 1) then
+                if skip_index then
+                    skipped[skip_index] = true
                 end
-                skip = i
+                skip_index = i
             end
-        elseif skip then
+        elseif skip_index then
             mp.set_property("time-pos", chapter.time)
-            skipped[skip] = true
+            skipped[skip_index] = true
             return
         end
     end
 
-    if skip then
+    if skip_index then
         mp.set_property("time-pos", mp.get_property("duration"))
     end
 end
