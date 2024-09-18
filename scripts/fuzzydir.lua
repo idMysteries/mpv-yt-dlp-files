@@ -174,29 +174,38 @@ end
 
 -- Platform-dependent optimization end
 
-local function traverse(search_path, current_path)
-    local stack = {}
-    local result = {}
-    table.insert(stack, { path = current_path, level = 1 })
+local global_cache = {}
 
-    while #stack > 0 do
-        local node = table.remove(stack)
-        local full_path = utils.join_path(search_path, node.path)
+local function traverse(search_path, current_path, level, result)
+    level = level or 1
+    result = result or {}
 
-        if node.level > o.max_search_depth then
-            msg.trace("Traversed too deep, skipping scan for", full_path)
-        else
-            local dirs = fast_readdir(full_path) or {}
-            if o.discovery_threshold > 0 and #dirs > o.discovery_threshold then
-                msg.debug("Too many directories in " .. full_path .. ", skipping")
-            else
-                for _, dir in ipairs(dirs) do
-                    local new_path = utils.join_path(node.path, dir)
-                    table.insert(result, new_path)
-                    table.insert(stack, { path = new_path, level = node.level + 1 })
-                end
-            end
-        end
+    if level > o.max_search_depth then
+        msg.trace("Reached max depth at", current_path)
+        return result
+    end
+
+    local full_path = utils.join_path(search_path, current_path)
+    msg.debug("Traversing", full_path, "at level", level)
+
+    local dirs = nil
+    if global_cache[full_path] then
+        msg.trace("Using cached dirs for", full_path)
+        dirs = global_cache[full_path]
+    else
+        dirs = fast_readdir(full_path) or {}
+        global_cache[full_path] = dirs
+    end
+
+    if o.discovery_threshold > 0 and #dirs > o.discovery_threshold then
+        msg.debug("Too many directories in " .. full_path .. ", skipping")
+        return result
+    end
+
+    for _, dir in ipairs(dirs) do
+        local new_path = utils.join_path(current_path, dir)
+        table.insert(result, new_path)
+        traverse(search_path, new_path, level + 1, result)
     end
 
     return result
@@ -205,20 +214,42 @@ end
 local function explode(raw_paths, search_path)
     local result = {}
     for _, raw_path in ipairs(raw_paths) do
-        local parent, leftover = utils.split_path(raw_path)
-        if leftover == "**" then
+        local is_wildcard = ends_with(raw_path, "**")
+        local base_path = raw_path
+
+        if is_wildcard then
+            base_path = raw_path:sub(1, -3)
+            base_path = normalize(base_path)
             msg.trace("Expanding wildcard for", raw_path)
-            table.insert(result, parent)
-            local expanded_paths = traverse(search_path, parent)
+
+            if base_path ~= "" and not contains(result, base_path) then
+                table.insert(result, base_path)
+            end
+
+            local cache_key = search_path .. "|" .. base_path
+            local expanded_paths
+
+            if global_cache[cache_key] then
+                msg.trace("Using cached paths for", cache_key)
+                expanded_paths = global_cache[cache_key]
+            else
+                expanded_paths = traverse(search_path, base_path)
+                global_cache[cache_key] = expanded_paths
+            end
+
             for _, p in ipairs(expanded_paths) do
                 local normalized_path = normalize(p)
                 if not contains(result, normalized_path) and normalized_path ~= "" then
                     table.insert(result, normalized_path)
                 end
             end
+
         else
             msg.trace("Path", raw_path, "doesn't have a wildcard, keeping as-is")
-            table.insert(result, normalize(raw_path))
+            local normalized_path = normalize(raw_path)
+            if normalized_path ~= "" and not contains(result, normalized_path) then
+                table.insert(result, normalized_path)
+            end
         end
     end
 
