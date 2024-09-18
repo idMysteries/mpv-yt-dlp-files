@@ -1,14 +1,15 @@
 local mp = require 'mp'
 local msg = require 'mp.msg'
-local options = {
+local options = require 'mp.options'
+
+local o = {
     enabled = false,
     skip_once = true,
     categories = "",
     skip = "opening;ending;"
 }
 
-mp.options = require "mp.options"
-mp.options.read_options(options)
+options.read_options(o)
 
 local default_categories = {
     prologue = { "^[Pp]rologue", "^[Ii]ntro" },
@@ -26,7 +27,7 @@ local function update_categories()
         categories[k] = v
     end
 
-    for category in string.gmatch(options.categories, "([^;]+)") do
+    for category in string.gmatch(o.categories, "([^;]+)") do
         local name, patterns = category:match(" *([^+>]+) *[+>](.*)")
         if name and patterns then
             local lower_name = name:lower()
@@ -43,7 +44,7 @@ end
 update_categories()
 
 local function matches(title)
-    for category in options.skip:gmatch("([^;]+)") do
+    for category in o.skip:gmatch("([^;]+)") do
         local patterns = categories[category:lower()]
         if patterns then
             for _, pattern in ipairs(patterns) do
@@ -59,8 +60,8 @@ end
 local skipped = {}
 
 local function chapterskip(_, current_chapter_index)
-    if not options.enabled then return end
-    if not current_chapter_index then current_chapter_index = 0 end
+    if not o.enabled then return end
+    current_chapter_index = current_chapter_index or 0
 
     local chapters = mp.get_property_native("chapter-list") or {}
     local skip_index = nil
@@ -68,7 +69,7 @@ local function chapterskip(_, current_chapter_index)
     for i = current_chapter_index + 1, #chapters do
         local chapter = chapters[i]
 
-        if (not options.skip_once or not skipped[i]) and matches(chapter.title) then
+        if (not o.skip_once or not skipped[i]) and matches(chapter.title) then
             if i == current_chapter_index + 1 or (skip_index and i == skip_index + 1) then
                 if skip_index then
                     skipped[skip_index] = true
