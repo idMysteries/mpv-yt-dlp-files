@@ -42,7 +42,7 @@ end
 
 update_categories()
 
-local function matches(i, title)
+local function matches(title)
     for category in options.skip:gmatch("([^;]+)") do
         local patterns = categories[category:lower()]
         if patterns then
@@ -65,7 +65,7 @@ local function chapterskip(_, current)
     local skip = nil
 
     for i, chapter in ipairs(chapters) do
-        if (not options.skip_once or not skipped[i]) and matches(i, chapter.title) then
+        if (not options.skip_once or not skipped[i]) and matches(chapter.title) then
             if i == current + 1 or (skip and i == skip + 1) then
                 if skip then
                     skipped[skip] = true
