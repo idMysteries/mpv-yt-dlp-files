@@ -27,7 +27,7 @@ local function update_categories()
         categories[k] = v
     end
 
-    for category in string.gmatch(o.categories, "([^;]+)") do
+    for category in o.categories:gmatch("([^;]+)") do
         local name, patterns = category:match(" *([^+>]+) *[+>](.*)")
         if name and patterns then
             local lower_name = name:lower()
