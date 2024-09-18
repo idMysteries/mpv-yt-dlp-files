@@ -58,12 +58,15 @@ local function matches(title)
 end
 
 local skipped = {}
+local chapters = nil
 
 local function chapterskip(_, current_chapter_index)
-    if not o.enabled then return end
-    current_chapter_index = current_chapter_index or 0
+    if not o.enabled or not current_chapter_index then return end
+    
+    if not chapters then
+        chapters = mp.get_property_native("chapter-list") or {}
+    end
 
-    local chapters = mp.get_property_native("chapter-list") or {}
     local skip_index = nil
 
     for i = current_chapter_index + 1, #chapters do
@@ -89,4 +92,7 @@ local function chapterskip(_, current_chapter_index)
 end
 
 mp.observe_property("chapter", "number", chapterskip)
-mp.register_event("file-loaded", function() skipped = {} end)
+mp.register_event("file-loaded", function()
+    skipped = {}
+    chapters = nil
+end)
