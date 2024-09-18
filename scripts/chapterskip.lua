@@ -20,6 +20,7 @@ local default_categories = {
 }
 
 local categories = {}
+local skip_patterns = {}
 
 local function update_categories()
     categories = {}
@@ -27,31 +28,34 @@ local function update_categories()
         categories[k] = v
     end
 
-    for category in o.categories:gmatch("([^;]+)") do
-        local name, patterns = category:match(" *([^+>]+) *[+>](.*)")
-        if name and patterns then
-            local lower_name = name:lower()
-            categories[lower_name] = {}
-            for pattern in patterns:gmatch("([^/]+)") do
-                table.insert(categories[lower_name], pattern)
+    for category, patterns in o.categories:gmatch("([^+>]+)[+>]([^;]+)") do
+        local lower_name = category:lower():match("^%s*(.-)%s*$")
+        categories[lower_name] = {}
+        for pattern in patterns:gmatch("([^/]+)") do
+            table.insert(categories[lower_name], pattern)
+        end
+    end
+end
+
+local function update_skip_patterns()
+    skip_patterns = {}
+    for category in o.skip:gmatch("([^;]+)") do
+        local patterns = categories[category:lower()]
+        if patterns then
+            for _, pattern in ipairs(patterns) do
+                table.insert(skip_patterns, pattern)
             end
-        else
-            msg.warn("Improper category definition: " .. category)
         end
     end
 end
 
 update_categories()
+update_skip_patterns()
 
 local function matches(title)
-    for category in o.skip:gmatch("([^;]+)") do
-        local patterns = categories[category:lower()]
-        if patterns then
-            for _, pattern in ipairs(patterns) do
-                if title:match(pattern) then
-                    return true
-                end
-            end
+    for _, pattern in ipairs(skip_patterns) do
+        if title:match(pattern) then
+            return true
         end
     end
     return false
@@ -62,32 +66,33 @@ local chapters = nil
 
 local function chapterskip(_, current_chapter_index)
     if not o.enabled or not current_chapter_index then return end
-    
-    if not chapters then
-        chapters = mp.get_property_native("chapter-list") or {}
-    end
 
-    local skip_index = nil
+    chapters = chapters or mp.get_property_native("chapter-list") or {}
+    local num_chapters = #chapters
+    local i = current_chapter_index + 1
+    local skip_occurred = false
 
-    for i = current_chapter_index + 1, #chapters do
+    while i <= num_chapters do
         local chapter = chapters[i]
-
         if (not o.skip_once or not skipped[i]) and matches(chapter.title) then
-            if i == current_chapter_index + 1 or (skip_index and i == skip_index + 1) then
-                if skip_index then
-                    skipped[skip_index] = true
-                end
-                skip_index = i
-            end
-        elseif skip_index then
-            mp.set_property("time-pos", chapter.time)
-            skipped[skip_index] = true
-            return
+            skipped[i] = true
+            skip_occurred = true
+            i = i + 1
+        else
+            break
         end
     end
 
-    if skip_index then
-        mp.set_property("time-pos", mp.get_property("duration"))
+    if skip_occurred then
+        local target_time
+        if i <= num_chapters then
+            target_time = chapters[i].time
+        else
+            target_time = mp.get_property_number("duration")
+        end
+        if target_time then
+            mp.set_property_number("time-pos", target_time)
+        end
     end
 end
 
