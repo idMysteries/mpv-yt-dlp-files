@@ -13,8 +13,8 @@ options.read_options(o)
 
 local default_categories = {
     prologue = { "^[Pp]rologue", "^[Ii]ntro" },
-    opening = { "^OP", "OP$", "^[Oo]pening", "^[Oo]pening$" },
-    ending = { "^ED", "ED$", "^[Ee]nding", "^[Ee]nding$" },
+    opening = { "^OP", "OP$", "^[Oo]pening", "[Oo]pening$", "^[Оо]пен.нг", "[Оо]пен.нг$" },
+    ending = { "^ED", "ED$", "^[Ee]nding", "[Ee]nding$", "^[Ээ]нд.нг", "[Ээ]нд.нг$" },
     credits = { "^[Cc]redits", "[Cc]redits$" },
     preview = { "[Pp]review$" }
 }
@@ -65,7 +65,7 @@ local skipped = {}
 local chapters = nil
 
 local function chapterskip(_, current_chapter_index)
-    if not o.enabled or not current_chapter_index then return end
+    if not o.enabled or not current_chapter_index or current_chapter_index < 0 then return end
 
     chapters = chapters or mp.get_property_native("chapter-list") or {}
     local num_chapters = #chapters
@@ -100,4 +100,8 @@ mp.observe_property("chapter", "number", chapterskip)
 mp.register_event("file-loaded", function()
     skipped = {}
     chapters = nil
+end)
+mp.add_key_binding("y", "chapterskip", function()
+    o.enabled = not o.enabled;
+    mp.osd_message(o.enabled and "Chapter skip enabled" or "Chapter skip disabled")
 end)
