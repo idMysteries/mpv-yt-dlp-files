@@ -41,7 +41,7 @@ $params = @{
     OutputPlaylistFormat = "\%(playlist)s\"
 }
 
-& $ytdlp --update
+& $ytdlp --update-to nightly
 
 $metadata = & $ytdlp --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
 Write-Host "yt-dlp metadata:$metadata"
