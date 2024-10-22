@@ -35,7 +35,7 @@ $dateDirectory = Get-Date -Format "\\yyyy-MM-dd\\"
 
 $params = @{
     Uploader = "%(uploader)s"
-    Archive = @("--download-archive", "$env:LOCALAPPDATA\mpv\archive.txt")
+    Archive = @("--download-archive", "F:\mpv\archive.txt")
     MetaTitle = @("--parse-metadata", "title:%(meta_title)s")
     OutputFormat = "%(upload_date>%Y-%m-%d)s - %(title).150s [%(id)s].%(ext)s"
     OutputPlaylistFormat = "\%(playlist)s\"
@@ -43,7 +43,7 @@ $params = @{
 
 & $ytdlp --update-to nightly
 
-$metadata = & $ytdlp --print playlist_id,playlist_title,uploader,id,extractor --ignore-no-formats-error --no-download-archive --no-mark-watched --playlist-end 1 $url
+$metadata = & $ytdlp --print playlist_id,playlist_title,uploader,id,extractor --ignore-config --ignore-no-formats-error --playlist-end 1 $url
 Write-Host "yt-dlp metadata:$metadata"
 
 $playlistId, $playlistTitle, $videoUploader, $videoId, $videoExtractor = $metadata -Split "`n"
