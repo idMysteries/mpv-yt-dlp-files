@@ -6,7 +6,7 @@ local o = {
     enabled = false,
     skip_once = true,
     categories = "",
-    skip = "opening;ending;"
+    skip = "sponsor;"
 }
 
 options.read_options(o)
@@ -16,7 +16,8 @@ local default_categories = {
     opening = { "^OP", "OP$", "^[Oo]pening", "[Oo]pening$", "^[Оо]пен.нг", "[Оо]пен.нг$" },
     ending = { "^ED", "ED$", "^[Ee]nding", "[Ee]nding$", "^[Ээ]нд.нг", "[Ээ]нд.нг$" },
     credits = { "^[Cc]redits", "[Cc]redits$" },
-    preview = { "[Pp]review$" }
+    preview = { "[Pp]review$" },
+    sponsor = { "%[SponsorBlock%]:%s*Sponsor" }
 }
 
 local categories = {}
