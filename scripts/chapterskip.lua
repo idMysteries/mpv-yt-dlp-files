@@ -1,5 +1,4 @@
 local mp = require 'mp'
-local msg = require 'mp.msg'
 local options = require 'mp.options'
 
 local o = {
@@ -17,7 +16,7 @@ local default_categories = {
     ending = { "^ED", "ED$", "^[Ee]nding", "[Ee]nding$", "^[Ээ]нд.нг", "[Ээ]нд.нг$" },
     credits = { "^[Cc]redits", "[Cc]redits$" },
     preview = { "[Pp]review$" },
-    sponsor = { "%[SponsorBlock%]:%s*Sponsor" }
+    sponsor = { "%[SponsorBlock%]:.*Sponsor" }
 }
 
 local categories = {}
@@ -98,11 +97,13 @@ local function chapterskip(_, current_chapter_index)
 end
 
 mp.observe_property("chapter", "number", chapterskip)
+
 mp.register_event("file-loaded", function()
     skipped = {}
     chapters = nil
 end)
-mp.add_key_binding("y", "chapterskip", function()
-    o.enabled = not o.enabled;
+
+mp.add_key_binding("y", "chapterskip_toggle", function()
+    o.enabled = not o.enabled
     mp.osd_message(o.enabled and "Chapter skip enabled" or "Chapter skip disabled")
 end)
