@@ -148,12 +148,17 @@ local function scan_dir(dir, depth)
     if not files then return subs, vid_count, sub_count end
 
     for _, f in ipairs(files) do
-        if SUB_EXTS[ext(f)] then
+        local e = ext(f)
+        if SUB_EXTS[e] then
             table.insert(subs, utils.join_path(dir, f))
             sub_count = sub_count + 1
-        elseif VID_EXTS[ext(f)] then
+        elseif VID_EXTS[e] then
             vid_count = vid_count + 1
         end
+    end
+
+    if depth > 0 and vid_count > 0 then
+        return {}, 0, 0
     end
 
     if depth < MAX_DEPTH then
