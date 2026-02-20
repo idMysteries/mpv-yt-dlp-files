@@ -1,201 +1,213 @@
 local utils = require("mp.utils")
 local msg = require("mp.msg")
 
-local sub_exts = mp.get_property_native("sub-auto-exts")
+local MAX_DEPTH = 2
+local MIN_SCORE = 100
+local SOLO_RULE = true
 
-local config = {
-    auto_select_first_matching_sub = true,
-    sub_search_depth = 0,
-}
-require("mp.options").read_options(config)
-
-local function base_dir(path)
-    return path:match("^(.*[/\\])")
-end
-
-local function file_name(path)
-    return path:match("([^/\\]+)$")
-end
-
-local function file_ext(name)
-    return name:match(".*%.(.*)") or ""
-end
-
-local function extract_numbers(str)
-    local numbers = {}
-    str:gsub("%d+", function(num) numbers[#numbers + 1] = tonumber(num) end)
-    return numbers
-end
-
-local function index_of(array, key)
-    for i, v in ipairs(array) do
-        if v == key then return i end
-    end
-    return nil
-end
-
-local function array_has(array, key)
-    return index_of(array, key) ~= nil
-end
-
-local function filter_array(array, predicate)
-    local new = {}
-    for _, v in ipairs(array) do
-        if predicate(v) then new[#new + 1] = v end
-    end
-    return new
-end
-
-local function is_sub_already_loaded(sub_name)
-    local tracks = mp.get_property_native("track-list", {})
-    for _, track in ipairs(tracks) do
-        if track.type == "sub" and track["external-filename"] then
-            if file_name(track["external-filename"]) == sub_name then
-                return true
-            end
+local function build_ext_set(prop)
+    local val = mp.get_property_native(prop, {})
+    local set = {}
+    if type(val) == "table" then
+        for _, e in ipairs(val) do
+            set[e:lower()] = true
+        end
+    elseif type(val) == "string" then
+        for e in val:gmatch("[^,]+") do
+            set[e:lower():match("^%s*(.-)%s*$")] = true
         end
     end
-    return false
+    return set
 end
 
-local function collect_files_recursive(dir, max_depth, current_depth)
-    current_depth = current_depth or 0
-    local result = {}
-    local seen = {}
+local SUB_EXTS = build_ext_set("options/sub-auto-exts")
+local VID_EXTS = build_ext_set("options/video-exts")
 
-    local function scan(d, depth)
-        local files = utils.readdir(d, "files")
-        if files then
-            for _, f in ipairs(files) do
-                if not seen[f] then
-                    seen[f] = true
-                    result[#result + 1] = { name = f, path = d .. f }
-                end
-            end
-        end
-
-        if depth < max_depth then
-            local dirs = utils.readdir(d, "dirs")
-            if dirs then
-                table.sort(dirs)
-                for _, sub in ipairs(dirs) do
-                    scan(d .. sub .. "/", depth + 1)
-                end
-            end
-        end
-    end
-
-    scan(dir, current_depth)
-    return result
+local function ext(f)
+    return (f:match("%.([^%.]+)$") or ""):lower()
 end
 
-local function episode_number(file, sorted_files)
-    local idx = index_of(sorted_files, file)
-    if not idx then
-        msg.warn("File not found in list: " .. file)
-        return nil
-    end
-
-    local numbers = extract_numbers(file)
-    if #numbers == 0 then
-        msg.warn("No numbers found in: " .. file)
-        return nil
-    end
-
-    local function find_episode_vs(other_idx)
-        local other_numbers = extract_numbers(sorted_files[other_idx])
-        for n = 1, math.min(#numbers, #other_numbers) do
-            if numbers[n] ~= other_numbers[n] then
-                return numbers[n]
-            end
-        end
-        return nil
-    end
-
-    for i = idx + 1, #sorted_files do
-        local ep = find_episode_vs(i)
-        if ep then return ep end
-    end
-    for i = idx - 1, 1, -1 do
-        local ep = find_episode_vs(i)
-        if ep then return ep end
-    end
-
-    return numbers[1]
+local function basename(f)
+    local name = f:match("([^/\\]+)$") or f
+    return name:match("(.+)%.[^%.]+$") or name
 end
 
-local function sub_matches_episode(sub_file, episode)
-    local numbers = extract_numbers(sub_file)
-    return array_has(numbers, episode)
+local function filename_of(path)
+    return path:match("([^/\\]+)$") or path
 end
 
-local function load_subs()
-    local path = mp.get_property("path")
-    if not path then return end
+local function normalize(name)
+    name = name:lower()
+    name = name:gsub("%[.-%]", " ")
+    name = name:gsub("%(.-%)","  ")
+    name = name:gsub("[%.%-%_%+%{%}]", " ")
+    name = name:gsub("%s+", " ")
+    return name:match("^%s*(.-)%s*$")
+end
 
-    local dir  = base_dir(path)
-    local file = file_name(path)
-    if not dir or not file then return end
+local function parse_episode(name)
+    local n = name:lower()
+    local s, e
 
-    local ext = file_ext(file):lower()
+    s, e = n:match("s(%d+)e(%d+)")
+    if s then return tonumber(s), tonumber(e) end
 
-    local all_files_current = utils.readdir(dir, "files")
-    if not all_files_current then return end
+    s, e = n:match("(%d+)x(%d+)")
+    if s then return tonumber(s), tonumber(e) end
 
-    local videos = filter_array(all_files_current, function(f)
-        return file_ext(f):lower() == ext
-    end)
-    table.sort(videos)
+    s = n:match("season[%s%.%-_]*(%d+)")
+    e = n:match("episode[%s%.%-_]*(%d+)")
+    if s and e then return tonumber(s), tonumber(e) end
 
-    local episode = episode_number(file, videos)
-    if not episode then return end
+    e = n:match("%s%-+%s+(%d%d%d?)%s")
+    if e then return nil, tonumber(e) end
 
-    local all_entries = collect_files_recursive(dir, config.sub_search_depth)
+    e = n:match("[^%d]e(%d+)")
+    if e then return nil, tonumber(e) end
 
-    local sub_entries = filter_array(all_entries, function(entry)
-        return array_has(sub_exts, file_ext(entry.name):lower())
-    end)
-    if #sub_entries == 0 then return end
+    return nil, nil
+end
 
-    local groups = {}
-    for _, entry in ipairs(sub_entries) do
-        local key = entry.name:gsub("%d+", "#")
-        if not groups[key] then groups[key] = {} end
-        groups[key][#groups[key] + 1] = entry
+local function extract_title(name)
+    local n = normalize(name)
+    local t = n:match("^(.-)%s+s%d+e%d+")
+           or n:match("^(.-)%s+%d+x%d+")
+           or n:match("^(.-)%s+season%s")
+           or n:match("^(.-)%s+%-%s+%d%d")
+           or n:match("^(.-)%s+e%d+%s")
+
+    if not t or t == "" then
+        t = n:match("^(.-)%s+[12]%d%d%d%s")
     end
+    if not t or t == "" then
+        t = n:match("^(.-)%s+%d+p[%s$]")
+         or n:match("^(.-)%s+bluray")
+         or n:match("^(.-)%s+bdrip")
+         or n:match("^(.-)%s+webrip")
+         or n:match("^(.-)%s+web%s")
+         or n:match("^(.-)%s+hdtv")
+         or n:match("^(.-)%s+dvdrip")
+         or n:match("^(.-)%s+hdr")
+    end
+    if not t or t == "" then t = n end
+    t = t:gsub("%s+[12]%d%d%d%s*$", "")
+    return t:match("^%s*(.-)%s*$")
+end
 
-    local matched_subs = {}
+local function word_dice(a, b)
+    local wa, wb = {}, {}
+    for w in a:gmatch("%S+") do wa[w] = true end
+    for w in b:gmatch("%S+") do wb[w] = true end
+    local ca, cb, common = 0, 0, 0
+    for w in pairs(wa) do ca = ca + 1; if wb[w] then common = common + 1 end end
+    for _ in pairs(wb) do cb = cb + 1 end
+    if ca + cb == 0 then return 0 end
+    return (2 * common) / (ca + cb)
+end
 
-    for _, group in pairs(groups) do
-        if #group > 1 then
-            table.sort(group, function(a, b) return a.name < b.name end)
-            local names = {}
-            for i, entry in ipairs(group) do names[i] = entry.name end
+local function score_match(vid, sub)
+    local vn = normalize(vid)
+    local sn = normalize(sub)
+    if vn == sn then return 1000 end
 
-            for i, entry in ipairs(group) do
-                if episode_number(entry.name, names) == episode then
-                    matched_subs[#matched_subs + 1] = entry
-                end
-            end
+    local score = 0
+
+    local vs, ve = parse_episode(vid)
+    local ss, se = parse_episode(sub)
+
+    if ve and se then
+        if ve == se and (vs == ss or vs == nil or ss == nil) then
+            score = score + 500
         else
-            if sub_matches_episode(group[1].name, episode) then
-                matched_subs[#matched_subs + 1] = group[1]
+            return 0
+        end
+    end
+
+    local vt = extract_title(vid)
+    local st = extract_title(sub)
+
+    if vt ~= "" and st ~= "" then
+        score = score + word_dice(vt, st) * 300
+        if vt == st then score = score + 100 end
+    end
+
+    score = score + word_dice(vn, sn) * 50
+
+    if vn:find(sn, 1, true) or sn:find(vn, 1, true) then
+        score = score + 80
+    end
+
+    return score
+end
+
+local function scan_dir(dir, depth)
+    local subs = {}
+    local vid_count, sub_count = 0, 0
+
+    local files = utils.readdir(dir, "files")
+    if not files then return subs, vid_count, sub_count end
+
+    for _, f in ipairs(files) do
+        if SUB_EXTS[ext(f)] then
+            table.insert(subs, utils.join_path(dir, f))
+            sub_count = sub_count + 1
+        elseif VID_EXTS[ext(f)] then
+            vid_count = vid_count + 1
+        end
+    end
+
+    if depth < MAX_DEPTH then
+        local dirs = utils.readdir(dir, "dirs")
+        if dirs then
+            for _, d in ipairs(dirs) do
+                if not d:match("^%.") then
+                    local child_subs = scan_dir(utils.join_path(dir, d), depth + 1)
+                    for _, s in ipairs(child_subs) do
+                        table.insert(subs, s)
+                    end
+                end
             end
         end
     end
 
-    if config.auto_select_first_matching_sub then
-        table.sort(matched_subs, function(a, b) return a.name > b.name end)
-    else
-        table.sort(matched_subs, function(a, b) return a.name < b.name end)
+    return subs, vid_count, sub_count
+end
+
+local function find_and_load()
+    local filepath = mp.get_property("path")
+    if not filepath then return end
+    if filepath:match("^%a+://") and not filepath:match("^file://") then return end
+
+    local dir, fname = utils.split_path(filepath)
+    if not dir or dir == "" then dir = "." end
+    local vid_base = basename(fname)
+
+    local subs, vid_count, sub_count = scan_dir(dir, 0)
+    if #subs == 0 then return end
+
+    local candidates = {}
+    for _, sp in ipairs(subs) do
+        local sf = filename_of(sp)
+        local sb = basename(sf)
+        local sc = score_match(vid_base, sb)
+
+        if SOLO_RULE and sc < MIN_SCORE then
+            local sd = utils.split_path(sp)
+            if sd == dir and vid_count == 1 and sub_count == 1 then
+                sc = math.max(sc, 200)
+            end
+        end
+
+        if sc >= MIN_SCORE then
+            table.insert(candidates, { path = sp, score = sc })
+        end
     end
 
-    for _, entry in ipairs(matched_subs) do
-        if not is_sub_already_loaded(entry.name) then
-            mp.commandv("sub-add", entry.path)
-            msg.info("Added subtitle: " .. entry.path)
-        end
+    table.sort(candidates, function(a, b) return a.score > b.score end)
+
+    for _, c in ipairs(candidates) do
+        mp.commandv("sub-add", c.path)
     end
 end
 
-mp.add_hook("on_preloaded", 50, load_subs)
+mp.add_hook("on_preloaded", 50, find_and_load)
