@@ -1,0 +1,1 @@
+--- A simple, lightweight, and smart subtitle auto-catcher for movies and series for MPV will be here
