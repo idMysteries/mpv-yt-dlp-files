@@ -105,15 +105,13 @@ local function word_dice(a, b)
     return (2 * common) / (ca + cb)
 end
 
-local function score_match(vid, sub)
-    local vn = normalize(vid)
-    local sn = normalize(sub)
+local function score_match(vn, vs, ve, vt, sub_name)
+    local sn = normalize(sub_name)
     if vn == sn then return 1000 end
 
     local score = 0
 
-    local vs, ve = parse_episode(vid)
-    local ss, se = parse_episode(sub)
+    local ss, se = parse_episode(sub_name)
 
     if ve and se then
         if ve == se and (vs == ss or vs == nil or ss == nil) then
@@ -123,8 +121,7 @@ local function score_match(vid, sub)
         end
     end
 
-    local vt = extract_title(vid)
-    local st = extract_title(sub)
+    local st = extract_title(sub_name)
 
     if vt ~= "" and st ~= "" then
         score = score + word_dice(vt, st) * 300
@@ -149,16 +146,15 @@ local function scan_dir(dir, depth)
 
     for _, f in ipairs(files) do
         local e = ext(f)
-        if SUB_EXTS[e] then
+        if VID_EXTS[e] then
+            if depth > 0 then
+                return {}, 0, 0
+            end
+            vid_count = vid_count + 1
+        elseif SUB_EXTS[e] then
             table.insert(subs, utils.join_path(dir, f))
             sub_count = sub_count + 1
-        elseif VID_EXTS[e] then
-            vid_count = vid_count + 1
         end
-    end
-
-    if depth > 0 and vid_count > 0 then
-        return {}, 0, 0
     end
 
     if depth < MAX_DEPTH then
@@ -190,11 +186,14 @@ local function find_and_load()
     local subs, vid_count, sub_count = scan_dir(dir, 0)
     if #subs == 0 then return end
 
+    local vn = normalize(vid_base)
+    local vs, ve = parse_episode(vid_base)
+    local vt = extract_title(vid_base)
+
     local candidates = {}
     for _, sp in ipairs(subs) do
-        local sf = filename_of(sp)
-        local sb = basename(sf)
-        local sc = score_match(vid_base, sb)
+        local sb = basename(filename_of(sp))
+        local sc = score_match(vn, vs, ve, vt, sb)
 
         if SOLO_RULE and sc < MIN_SCORE then
             local sd = utils.split_path(sp)
