@@ -2,40 +2,33 @@ local utils = require("mp.utils")
 local msg = require("mp.msg")
 
 local sep = package.config:sub(1, 1)
-local MAX_DEPTH = 2
 
-local function build_ext_set(prop)
-    local val = mp.get_property_native(prop, {})
+local function to_set(array)
     local set = {}
-    if type(val) == "table" then
-        for _, e in ipairs(val) do set[e:lower()] = true end
+    for _, v in ipairs(array) do
+        set[v] = true
     end
     return set
 end
 
-local SUB_EXTS = build_ext_set("sub-auto-exts")
-local VID_EXTS = build_ext_set("video-exts")
+local SUB_EXT_SET = to_set(mp.get_property_native("sub-auto-exts"))
+local VID_EXT_SET = to_set(mp.get_property_native("video-exts"))
 
-local function file_ext(path)
-    return (path:match("%.([^%.]+)$") or ""):lower()
+local config = {
+    auto_select_first_matching_sub = true,
+}
+require("mp.options").read_options(config)
+
+local function base_dir(path)
+    return path:match("(.*" .. sep .. ")")
 end
 
 local function file_name(path)
-    return path:match("([^/\\]+)$") or path
+    return path:match(".*" .. sep .. "(.*)")
 end
 
-local function basename(path)
-    local name = file_name(path)
-    return name:match("(.+)%.[^%.]+$") or name
-end
-
-local function normalize(name)
-    name = name:lower()
-    name = name:gsub("%[.-%]", " ")
-    name = name:gsub("%(.-%)","  ")
-    name = name:gsub("[%.%-%_%+%{%}]", " ")
-    name = name:gsub("%s+", " ")
-    return name:match("^%s*(.-)%s*$")
+local function file_ext(path)
+    return path:match(".*%.(.*)") or ""
 end
 
 local function extract_numbers(str)
@@ -44,185 +37,144 @@ local function extract_numbers(str)
     return numbers
 end
 
-local function episode_number(file, files)
-    if #files <= 1 then
-        local nums = extract_numbers(file)
-        return nums[#nums]
+local function index_of(array, key)
+    for i, v in ipairs(array) do
+        if v == key then return i end
     end
+    return nil
+end
 
-    local sorted = {}
-    for _, f in ipairs(files) do table.insert(sorted, f) end
-    table.sort(sorted)
-
-    local current_index
-    for i, f in ipairs(sorted) do
-        if f == file then current_index = i; break end
+local function filter_array(array, predicate)
+    local new = {}
+    for _, v in ipairs(array) do
+        if predicate(v) then
+            table.insert(new, v)
+        end
     end
-    if not current_index then return nil end
+    return new
+end
+
+local function sorted_copy(array)
+    local copy = {}
+    for i = 1, #array do
+        copy[i] = array[i]
+    end
+    table.sort(copy)
+    return copy
+end
+
+local function is_sub_file(filename)
+    return SUB_EXT_SET[file_ext(filename):lower()]
+end
+
+local function is_video_file(filename)
+    return VID_EXT_SET[file_ext(filename):lower()]
+end
+
+local function episode_number(file, sorted_files)
+    local idx = index_of(sorted_files, file)
+    if not idx then
+        msg.warn("Couldn't determine episode number for " .. file)
+        return nil
+    end
 
     local numbers = extract_numbers(file)
-    if #numbers == 0 then return nil end
 
-    local function find_episode_vs(other)
-        local other_numbers = extract_numbers(other)
-        for n = 1, math.min(#numbers, #other_numbers) do
+    local function compare(i)
+        local other_numbers = extract_numbers(sorted_files[i])
+        for n = 1, #numbers do
             if numbers[n] ~= other_numbers[n] then
                 return numbers[n]
             end
         end
-        return nil
+        return numbers[1]
     end
 
-    for i = current_index + 1, #sorted do
-        local ep = find_episode_vs(sorted[i])
+    for i = idx + 1, #sorted_files do
+        local ep = compare(i)
         if ep then return ep end
     end
-    for i = current_index - 1, 1, -1 do
-        local ep = find_episode_vs(sorted[i])
+    for i = idx - 1, 1, -1 do
+        local ep = compare(i)
         if ep then return ep end
     end
 
-    return numbers[#numbers]
+    msg.warn("Couldn't determine episode number for " .. file)
+    return nil
 end
 
-local function scan_subs(dir, depth)
-    local subs = {}
+local function collect_subs(dir, prefix)
+    prefix = prefix or ""
+    local results = {}
 
     local files = utils.readdir(dir, "files")
-    if not files then return subs end
-
-    for _, f in ipairs(files) do
-        local e = file_ext(f)
-        if VID_EXTS[e] then
-            if depth > 0 then return {} end
-        elseif SUB_EXTS[e] then
-            table.insert(subs, utils.join_path(dir, f))
-        end
-    end
-
-    if depth < MAX_DEPTH then
-        local dirs = utils.readdir(dir, "dirs")
-        if dirs then
-            for _, d in ipairs(dirs) do
-                if not d:match("^%.") then
-                    local child = scan_subs(utils.join_path(dir, d), depth + 1)
-                    for _, s in ipairs(child) do
-                        table.insert(subs, s)
-                    end
+    if files then
+        if prefix ~= "" then
+            for _, f in ipairs(files) do
+                if is_video_file(f) then
+                    return results
                 end
+            end
+        end
+        for _, f in ipairs(files) do
+            if is_sub_file(f) then
+                table.insert(results, {
+                    path = dir .. sep .. f,
+                    name = prefix .. f,
+                })
             end
         end
     end
 
-    return subs
+    local subdirs = utils.readdir(dir, "dirs")
+    if subdirs then
+        table.sort(subdirs)
+        for _, subdir in ipairs(subdirs) do
+            local sub_results = collect_subs(dir .. sep .. subdir, prefix .. subdir .. sep)
+            for _, entry in ipairs(sub_results) do
+                table.insert(results, entry)
+            end
+        end
+    end
+
+    return results
 end
 
-local function word_dice(a, b)
-    local wa, wb = {}, {}
-    for w in a:gmatch("%S+") do wa[w] = true end
-    for w in b:gmatch("%S+") do wb[w] = true end
-    local ca, cb, common = 0, 0, 0
-    for w in pairs(wa) do ca = ca + 1; if wb[w] then common = common + 1 end end
-    for _ in pairs(wb) do cb = cb + 1 end
-    if ca + cb == 0 then return 0 end
-    return (2 * common) / (ca + cb)
-end
-
-local function find_and_load()
+local function load_subs()
     local path = mp.get_property("path")
-    if not path then return end
-    if path:match("^%a+://") and not path:match("^file://") then return end
+    local dir = base_dir(path)
+    local file = file_name(path)
 
-    local dir = path:match("(.*" .. sep .. ")") or "."
-    local fname = file_name(path)
+    local all_files = utils.readdir(dir, "files")
+    if not all_files then return end
 
-    local all_files = utils.readdir(dir, "files") or {}
-    local videos = {}
-    for _, f in ipairs(all_files) do
-        if VID_EXTS[file_ext(f)] then
-            table.insert(videos, f)
-        end
+    local sub_entries = collect_subs(dir)
+    if not next(sub_entries) then return end
+
+    local videos = filter_array(all_files, is_video_file)
+    local sorted_videos = sorted_copy(videos)
+    local episode = episode_number(file, sorted_videos)
+    if not episode and #videos > 1 then return end
+
+    local sub_names = {}
+    for i, entry in ipairs(sub_entries) do
+        sub_names[i] = entry.name
+    end
+    local sorted_sub_names = sorted_copy(sub_names)
+
+    if config.auto_select_first_matching_sub then
+        table.sort(sub_entries, function(a, b) return a.name > b.name end)
+    else
+        table.sort(sub_entries, function(a, b) return a.name < b.name end)
     end
 
-    local vid_episode = episode_number(fname, videos)
-    local vid_norm = normalize(basename(fname))
-
-    local subs = scan_subs(dir, 0)
-    if #subs == 0 then return end
-
-    local subs_by_dir = {}
-    for _, sp in ipairs(subs) do
-        local sd = sp:match("(.*" .. sep .. ")") or dir
-        if not subs_by_dir[sd] then subs_by_dir[sd] = {} end
-        table.insert(subs_by_dir[sd], file_name(sp))
-    end
-
-    local candidates = {}
-
-    for _, sp in ipairs(subs) do
-        local sf = file_name(sp)
-        local sb = basename(sf)
-        local sn = normalize(sb)
-        local sd = sp:match("(.*" .. sep .. ")") or dir
-        local sub_siblings = subs_by_dir[sd] or {}
-
-        local dominated = false
-        local score = 0
-
-        if vid_norm == sn then
-            score = 1000
-        else
-            local sub_episode = episode_number(sf, sub_siblings)
-
-            if vid_episode and sub_episode then
-                if vid_episode == sub_episode then
-                    score = score + 500
-                else
-                    dominated = true
-                end
-            end
-
-            if not dominated then
-                local dice = word_dice(vid_norm, sn)
-                score = score + dice * 300
-
-                if vid_norm:find(sn, 1, true) or sn:find(vid_norm, 1, true) then
-                    score = score + 80
-                end
-            end
+    for _, entry in ipairs(sub_entries) do
+        if not episode or
+           episode_number(entry.name, sorted_sub_names) == episode then
+            mp.commandv("sub-add", entry.path)
+            print("Added subtitle: " .. entry.name)
         end
-
-        if not dominated and score < 100 then
-            if sd == dir and #videos == 1 and #sub_siblings == 1 then
-                score = math.max(score, 200)
-            end
-        end
-
-        if not dominated and score >= 100 then
-            table.insert(candidates, { path = sp, score = score })
-        end
-    end
-
-    table.sort(candidates, function(a, b) return a.score > b.score end)
-
-    local existing = {}
-    local tracks = mp.get_property_native("track-list", {})
-    for _, t in ipairs(tracks) do
-        if t.type == "sub" and t["external-filename"] then
-            existing[t["external-filename"]] = true
-        end
-    end
-
-    for _, c in ipairs(candidates) do
-        if not existing[c.path] then
-            msg.info("Loaded: " .. c.path .. " (score: " .. c.score .. ")")
-            mp.commandv("sub-add", c.path)
-        end
-    end
-
-    if #candidates == 0 then
-        msg.verbose("No matching subtitles found")
     end
 end
 
-mp.add_hook("on_preloaded", 50, find_and_load)
+mp.add_hook('on_preloaded', 50, load_subs)
