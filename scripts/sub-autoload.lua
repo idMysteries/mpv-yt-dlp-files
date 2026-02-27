@@ -1,3 +1,5 @@
+-- https://github.com/xrun1/mpv-smart-sub-autoload
+
 local utils = require("mp.utils")
 local msg = require("mp.msg")
 
